@@ -1,12 +1,13 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TouchableWithoutFeedback, Text } from "react-native";
+import { View, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import {
   Modal,
   Portal,
+  Text,
   TextInput,
   Button,
-  Menu,
   IconButton,
+  Menu,
 } from "react-native-paper";
 import { useAuth } from "../context/AuthContext";
 
@@ -15,6 +16,16 @@ export type NewBubble = {
   name: string;
   reflectionCount?: number;
 };
+
+const TOPICS = [
+  "Filosofia",
+  "Spiritualità",
+  "Tecnologia",
+  "Arte",
+  "Musica",
+  "Scienza",
+  "Altro",
+];
 
 type Props = {
   visible: boolean;
@@ -29,37 +40,31 @@ export default function CreateBubbleModal({
 }: Props) {
   const { supabase, session } = useAuth();
   const [name, setName] = useState("");
-  const [topic, setTopic] = useState("Filosofia");
-  const [desc, setDesc] = useState("");
+  const [topic, setTopic] = useState<string | null>(null);
+  const [description, setDescription] = useState("");
   const [menuVisible, setMenuVisible] = useState(false);
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !topic) return;
     const { data, error } = await supabase
       .from("bubbles")
       .insert({
         name,
         topic,
-        description: desc,
+        description,
         user_id: session?.user.id,
       })
-      .select("id, reflectioncount")
+      .select("id")
       .single();
-
     if (error) {
       console.error("Errore creazione bolla:", error);
       return;
     }
-
     if (data) {
-      onCreated({
-        id: data.id as string,
-        name,
-        reflectionCount: (data as any).reflectioncount ?? 0,
-      });
+      onCreated({ id: data.id as string, name });
       setName("");
-      setDesc("");
-      setTopic("Filosofia");
+      setTopic(null);
+      setDescription("");
       onClose();
     }
   };
@@ -74,34 +79,33 @@ export default function CreateBubbleModal({
         <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
           <View>
             <IconButton icon="close" onPress={onClose} style={styles.close} />
-            <View style={{ alignItems: "center", marginBottom: 12 }}>
-              <IconButton icon="plus" iconColor="#ffe46b" size={20} />
-              <Text style={styles.title}>Create New Bubble</Text>
-              <Text style={styles.subtitle}>Share your thoughts</Text>
-            </View>
+            <Text style={styles.title}>+ Create New Bubble</Text>
+            <Text style={styles.subtitle}>
+              Create a new bubble that will last for 24 hours. Invite others to
+              join your conversation!
+            </Text>
+            <TextInput
+              mode="outlined"
+              placeholder="Enter bubble name"
+              value={name}
+              onChangeText={setName}
+              style={styles.input}
+            />
             <Menu
               visible={menuVisible}
               onDismiss={() => setMenuVisible(false)}
               anchor={
-                <Button
+                <TextInput
                   mode="outlined"
-                  onPress={() => setMenuVisible(true)}
-                  style={styles.dropdown}
-                  textColor="#ffe46b"
-                >
-                  {topic}
-                </Button>
+                  placeholder="Select a topic"
+                  value={topic ?? ""}
+                  onFocus={() => setMenuVisible(true)}
+                  style={styles.input}
+                  right={<TextInput.Icon icon="menu-down" />}
+                />
               }
             >
-              {[
-                "Filosofia",
-                "Spiritualità",
-                "Tecnologia",
-                "Arte",
-                "Musica",
-                "Scienza",
-                "Altro",
-              ].map((t) => (
+              {TOPICS.map((t) => (
                 <Menu.Item
                   key={t}
                   onPress={() => {
@@ -114,29 +118,17 @@ export default function CreateBubbleModal({
             </Menu>
             <TextInput
               mode="outlined"
-              label="Nome bolla"
-              value={name}
-              onChangeText={setName}
-              style={styles.input}
-              outlineColor="#555"
-              activeOutlineColor="#ffe46b"
-              theme={{ colors: { text: "#fff", placeholder: "#ffe46b" } }}
-            />
-            <TextInput
-              mode="outlined"
-              label="Descrizione"
-              value={desc}
-              onChangeText={setDesc}
+              placeholder="What would you like to discuss in this bubble?"
               multiline
-              style={styles.input}
-              outlineColor="#555"
-              activeOutlineColor="#ffe46b"
-              theme={{ colors: { text: "#fff", placeholder: "#ffe46b" } }}
+              value={description}
+              onChangeText={setDescription}
+              style={[styles.input, styles.desc]}
             />
             <Button
               mode="contained"
-              onPress={handleCreate}
               style={styles.button}
+              textColor="#111"
+              onPress={handleCreate}
             >
               Create Bubble
             </Button>
@@ -148,51 +140,38 @@ export default function CreateBubbleModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   modal: {
-    width: "90%",
-    backgroundColor: "#222",
+    margin: 20,
+    backgroundColor: "#121212",
     padding: 24,
     borderRadius: 12,
-    alignItems: "center",
   },
   close: {
     position: "absolute",
     top: 8,
     right: 8,
-    padding: 4,
   },
   title: {
     color: "#ffe46b",
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
+    marginTop: 16,
   },
   subtitle: {
     color: "#ccc",
     fontSize: 14,
-    marginTop: -4,
-    marginBottom: 8,
     textAlign: "center",
-  },
-  dropdown: {
-    width: "100%",
-    marginBottom: 16,
+    marginVertical: 8,
   },
   input: {
-    width: "100%",
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  desc: {
+    minHeight: 80,
   },
   button: {
     backgroundColor: "#ffe46b",
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 8,
     alignSelf: "center",
     marginTop: 8,
   },
