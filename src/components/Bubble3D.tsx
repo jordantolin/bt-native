@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Mesh } from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Text } from '@react-three/drei';
 
 import type { BubbleData } from './Bubble';
 
@@ -42,25 +42,15 @@ export default function Bubble3D({ data, onPress }: Bubble3DProps) {
     <mesh ref={meshRef} onClick={() => onPress(data.id)}>
       <sphereGeometry args={[1, 32, 32]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
-      <Html
-        occlude={false}
+      <Text
+        color="#fff"
+        anchorX="center"
+        anchorY="middle"
+        fontSize={0.5}
         position={[0, scaleFactor + 0.5, 0]}
-        style={{ pointerEvents: 'none' }}
-        center
       >
-        <div
-          style={{
-            color: '#fff',
-            background: 'rgba(0,0,0,0.4)',
-            padding: '2px 6px',
-            borderRadius: '12px',
-            whiteSpace: 'nowrap',
-            fontSize: '12px',
-          }}
-        >
-          {data.label}
-        </div>
-      </Html>
+        {data.label}
+      </Text>
     </mesh>
   );
 }
