@@ -11,21 +11,57 @@ import {
 import Modal from 'react-native-modal';
 import { Picker } from '@react-native-picker/picker';
 
+import { Alert } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+
+export type NewBubble = {
+  id: string;
+  name: string;
+  reflectionCount: number;
+};
+
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onCreate?: (name: string, topic: string, description: string) => void;
+  onCreated?: (bubble: NewBubble) => void;
 }
 
-export default function CreateBubbleModal({ visible, onClose, onCreate }: Props) {
+export default function CreateBubbleModal({ visible, onClose, onCreated }: Props) {
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [isPickerVisible, setPickerVisible] = useState(false);
+  const { supabase, session } = useAuth();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim() || !topic.trim()) return;
-    onCreate?.(name, topic, description); // safe call
+
+    const { data, error } = await supabase
+      .from('bubbles')
+      .insert({
+        name,
+        topic,
+        description: description || null,
+        user_id: session?.user.id,
+        created_at: new Date().toISOString(),
+        reflectionCount: 0,
+      })
+      .select('id, name, reflectionCount')
+      .single();
+
+    if (error) {
+      Alert.alert('Errore', error.message);
+      return;
+    }
+
+    if (data) {
+      onCreated?.({
+        id: data.id as string,
+        name: data.name,
+        reflectionCount: (data as any).reflectionCount ?? 0,
+      });
+    }
+
     setName('');
     setTopic('');
     setDescription('');

@@ -49,9 +49,12 @@ export default function BubblesScreen() {
 
   useEffect(() => {
     const loadBubbles = async () => {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("bubbles")
-        .select("id, name, reflectionCount");
+        .select("id, name, reflectionCount, created_at")
+        .gte("created_at", since)
+        .order("created_at", { ascending: true });
       if (error) {
         console.error("Errore caricamento bolle:", error);
         return;
@@ -60,7 +63,8 @@ export default function BubblesScreen() {
         id: item.id as string,
         label: (item as any).name ?? (item as any).label ?? item.id,
         reflectionCount: (item as any).reflectionCount ?? 0,
-        orbitRadius: BASE_ORBIT + idx * ORBIT_STEP,
+        orbitRadius:
+          BASE_ORBIT + idx * ORBIT_STEP + Math.random() * ORBIT_STEP * 0.4,
       }));
       setBubbles(withOrbit);
     };
@@ -74,15 +78,21 @@ export default function BubblesScreen() {
         { event: "INSERT", schema: "public", table: "bubbles" },
         (payload) => {
           const item: any = payload.new;
-          setBubbles((prev) => [
-            ...prev,
-            {
-              id: item.id as string,
-              label: item.label ?? item.name ?? item.id,
-              reflectionCount: item.reflectionCount ?? 0,
-              orbitRadius: BASE_ORBIT + prev.length * ORBIT_STEP,
-            },
-          ]);
+          const since = Date.now() - 24 * 60 * 60 * 1000;
+          if (new Date(item.created_at).getTime() < since) return;
+          setBubbles((prev) => {
+            if (prev.some((b) => b.id === item.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: item.id as string,
+                label: item.label ?? item.name ?? item.id,
+                reflectionCount: item.reflectionCount ?? 0,
+                orbitRadius:
+                  BASE_ORBIT + prev.length * ORBIT_STEP + Math.random() * ORBIT_STEP * 0.4,
+              },
+            ];
+          });
         },
       )
       .subscribe();
@@ -112,15 +122,19 @@ export default function BubblesScreen() {
         visible={showModal}
         onClose={() => setShowModal(false)}
         onCreated={(b: NewBubble) => {
-          setBubbles((prev) => [
-            ...prev,
-            {
-              id: b.id,
-              label: b.name,
-              reflectionCount: b.reflectionCount ?? 0,
-              orbitRadius: BASE_ORBIT + prev.length * ORBIT_STEP,
-            },
-          ]);
+          setBubbles((prev) => {
+            if (prev.some((x) => x.id === b.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: b.id,
+                label: b.name,
+                reflectionCount: b.reflectionCount ?? 0,
+                orbitRadius:
+                  BASE_ORBIT + prev.length * ORBIT_STEP + Math.random() * ORBIT_STEP * 0.4,
+              },
+            ];
+          });
           showToast("Bolla creata!");
         }}
       />
