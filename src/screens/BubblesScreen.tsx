@@ -1,99 +1,82 @@
-import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, View, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-} from 'react-native-reanimated';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import ThreeDWorld from '../components/ThreeDWorld';
+import FloatingButtons from '../components/FloatingButtons';
+import CreateBubbleModal, { CreateBubbleData } from '../components/CreateBubbleModal';
 
-const { width, height } = Dimensions.get('window');
-const CENTER_X = width / 2;
-const CENTER_Y = height / 2;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-type Bubble = {
+type BubbleData = {
   id: string;
-  radius: number;
-  orbitRadius: number;
-  color: string;
-  angle: Animated.SharedValue<number>;
-  glow: Animated.SharedValue<number>;
+  name: string;
+  topic: string;
+  reflectionCount: number;
+  createdAt: number;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Bubbles'>;
 
-function useCreateBubble(index: number): Bubble {
-  const angle = useSharedValue(Math.random() * Math.PI * 2);
-  const glow = useSharedValue(0);
-
-  const duration = 10000 + Math.random() * 5000;
-
-  useEffect(() => {
-    angle.value = withRepeat(
-      withTiming(angle.value + Math.PI * 2, {
-        duration,
-      }),
-      -1,
-      false
-    );
-  }, []);
-
-  return {
-    id: `bubble-${index}`,
-    radius: 20 + Math.random() * 20,
-    orbitRadius: 60 + Math.random() * 100,
-    color: '#ffe46b',
-    angle,
-    glow,
-  };
-}
-
-function useBubbles(): Bubble[] {
-  return Array.from({ length: 8 }, (_, i) => useCreateBubble(i));
-}
-
 export default function BubblesScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const bubbles = useBubbles();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [bubbles, setBubbles] = useState<BubbleData[]>(() =>
+    Array.from({ length: 6 }, (_, i) => ({
+      id: `bubble-${i}`,
+      name: `Bubble ${i + 1}`,
+      topic: 'Altro',
+      reflectionCount: 0,
+      createdAt: Date.now(),
+    }))
+  );
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBubbles((prev) => prev.filter((b) => Date.now() - b.createdAt <= DAY_MS));
+    }, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleCreate = (data: CreateBubbleData) => {
+    const newBubble: BubbleData = {
+      id: `bubble-${Date.now()}`,
+      name: data.name,
+      topic: data.topic,
+      reflectionCount: 0,
+      createdAt: Date.now(),
+    };
+    setBubbles((prev) => [...prev, newBubble]);
+    setModalVisible(false);
+  };
 
   return (
     <View style={styles.container}>
-      {bubbles.map((bubble) => {
-        const animatedStyle = useAnimatedStyle(() => {
-          const x = CENTER_X + bubble.orbitRadius * Math.cos(bubble.angle.value);
-          const y = CENTER_Y + bubble.orbitRadius * Math.sin(bubble.angle.value);
-          return {
-            transform: [{ translateX: x - bubble.radius }, { translateY: y - bubble.radius }],
-            width: bubble.radius * 2 + bubble.glow.value,
-            height: bubble.radius * 2 + bubble.glow.value,
-            borderRadius: bubble.radius + bubble.glow.value,
-            backgroundColor: bubble.color,
-            opacity: 0.9,
-            position: 'absolute',
-          };
-        });
-
-        return (
-          <Pressable
-            key={bubble.id}
-            onPress={() => {
-              bubble.glow.value = withSequence(
-                withTiming(12, { duration: 120 }),
-                withTiming(0, { duration: 200 })
-              );
-              setTimeout(() => {
-                navigation.navigate('Chat', { bubbleId: bubble.id });
-              }, 200);
-            }}
-          >
-            <Animated.View style={animatedStyle} />
-          </Pressable>
-        );
-      })}
+      <ThreeDWorld
+        bubbles={bubbles.map((b) => ({
+          id: b.id,
+          name: b.name,
+          reflectionCount: b.reflectionCount,
+          onPress: (id) => {
+            setBubbles((prev) =>
+              prev.map((p) =>
+                p.id === id ? { ...p, reflectionCount: p.reflectionCount + 1 } : p
+              )
+            );
+            setTimeout(() => navigation.navigate('Chat', { bubbleId: id }), 200);
+          },
+        }))}
+      />
+      <CreateBubbleModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onCreate={handleCreate}
+      />
+      <FloatingButtons
+        onLeftPress={() => navigation.navigate('TopBubbles')}
+        onRightPress={() => setModalVisible(true)}
+      />
     </View>
   );
 }
@@ -101,6 +84,6 @@ export default function BubblesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111111',
+    backgroundColor: '#111',
   },
 });
