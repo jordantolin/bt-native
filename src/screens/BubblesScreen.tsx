@@ -56,44 +56,57 @@ function useBubbles(): Bubble[] {
   return Array.from({ length: 8 }, (_, i) => useCreateBubble(i));
 }
 
+type BubbleItemProps = {
+  bubble: Bubble;
+  onPress: () => void;
+};
+
+function BubbleItem({ bubble, onPress }: BubbleItemProps) {
+  const animatedStyle = useAnimatedStyle(() => {
+    const x = CENTER_X + bubble.orbitRadius * Math.cos(bubble.angle.value);
+    const y = CENTER_Y + bubble.orbitRadius * Math.sin(bubble.angle.value);
+    return {
+      transform: [
+        { translateX: x - bubble.radius },
+        { translateY: y - bubble.radius },
+      ],
+      width: bubble.radius * 2 + bubble.glow.value,
+      height: bubble.radius * 2 + bubble.glow.value,
+      borderRadius: bubble.radius + bubble.glow.value,
+      backgroundColor: bubble.color,
+      opacity: 0.9,
+      position: 'absolute',
+    };
+  });
+
+  return (
+    <Pressable
+      onPress={() => {
+        bubble.glow.value = withSequence(
+          withTiming(12, { duration: 120 }),
+          withTiming(0, { duration: 200 })
+        );
+        setTimeout(onPress, 200);
+      }}
+    >
+      <Animated.View style={animatedStyle} />
+    </Pressable>
+  );
+}
+
 export default function BubblesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const bubbles = useBubbles();
 
   return (
     <View style={styles.container}>
-      {bubbles.map((bubble) => {
-        const animatedStyle = useAnimatedStyle(() => {
-          const x = CENTER_X + bubble.orbitRadius * Math.cos(bubble.angle.value);
-          const y = CENTER_Y + bubble.orbitRadius * Math.sin(bubble.angle.value);
-          return {
-            transform: [{ translateX: x - bubble.radius }, { translateY: y - bubble.radius }],
-            width: bubble.radius * 2 + bubble.glow.value,
-            height: bubble.radius * 2 + bubble.glow.value,
-            borderRadius: bubble.radius + bubble.glow.value,
-            backgroundColor: bubble.color,
-            opacity: 0.9,
-            position: 'absolute',
-          };
-        });
-
-        return (
-          <Pressable
-            key={bubble.id}
-            onPress={() => {
-              bubble.glow.value = withSequence(
-                withTiming(12, { duration: 120 }),
-                withTiming(0, { duration: 200 })
-              );
-              setTimeout(() => {
-                navigation.navigate('Chat', { bubbleId: bubble.id });
-              }, 200);
-            }}
-          >
-            <Animated.View style={animatedStyle} />
-          </Pressable>
-        );
-      })}
+      {bubbles.map((bubble) => (
+        <BubbleItem
+          key={bubble.id}
+          bubble={bubble}
+          onPress={() => navigation.navigate('Chat', { bubbleId: bubble.id })}
+        />
+      ))}
     </View>
   );
 }
