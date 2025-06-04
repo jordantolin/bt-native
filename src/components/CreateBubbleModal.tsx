@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
-import Modal from 'react-native-modal';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList, Modal, BackHandler } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 export type CreateBubbleData = {
@@ -31,6 +30,16 @@ export default function CreateBubbleModal({ visible, onClose, onCreate }: Create
   const [description, setDescription] = useState('');
   const [topicMenuVisible, setTopicMenuVisible] = useState(false);
 
+  useEffect(() => {
+    if (visible) {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        onClose();
+        return true;
+      });
+      return () => sub.remove();
+    }
+  }, [visible]);
+
   const canCreate = name.trim() !== '' && topic !== '';
 
   const handleCreate = () => {
@@ -42,11 +51,17 @@ export default function CreateBubbleModal({ visible, onClose, onCreate }: Create
   };
 
   return (
-    <Modal isVisible={visible} onBackdropPress={onClose} style={styles.modal}>
-      <View style={styles.content}>
-        <TouchableOpacity onPress={onClose} style={styles.close}>
-          <MaterialIcons name="close" size={24} color="#fff" />
-        </TouchableOpacity>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modal}>
+        <View style={styles.content}>
+          <TouchableOpacity onPress={onClose} style={styles.close}>
+            <MaterialIcons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
         <Text style={styles.title}>New Bubble</Text>
         <TextInput
           placeholder="Name"
@@ -65,8 +80,10 @@ export default function CreateBubbleModal({ visible, onClose, onCreate }: Create
             </Text>
           </TouchableOpacity>
           <Modal
-            isVisible={topicMenuVisible}
-            onBackdropPress={() => setTopicMenuVisible(false)}
+            transparent
+            visible={topicMenuVisible}
+            animationType="fade"
+            onRequestClose={() => setTopicMenuVisible(false)}
           >
             <View style={styles.dropdownList}>
               <FlatList
@@ -102,6 +119,7 @@ export default function CreateBubbleModal({ visible, onClose, onCreate }: Create
         >
           <Text style={styles.createText}>Create Bubble</Text>
         </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
