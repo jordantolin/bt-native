@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Dimensions, StyleSheet, View, Pressable } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,6 +10,7 @@ import Animated, {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import BubbleComponent from '../components/Bubble';
 
 const { width, height } = Dimensions.get('window');
 const CENTER_X = width / 2;
@@ -166,8 +167,16 @@ export default function BubblesScreen() {
         });
 
         return (
-          <Pressable
+          <BubbleComponent
             key={bubble.id}
+            id={bubble.id}
+            orbitCenter={bubble.orbitCenter}
+            orbitRadius={bubble.orbitRadius}
+            angle={bubble.angle}
+            size={bubble.size}
+            reflectionCount={bubble.reflectionCount}
+            glow={bubble.glow}
+            colorForCount={interpolateColor}
             onPress={() => {
               bubble.reflectionCount.value += 1;
               bubble.size.value =
@@ -180,9 +189,7 @@ export default function BubblesScreen() {
                 navigation.navigate('Chat', { bubbleId: bubble.id });
               }, 200);
             }}
-          >
-            <Animated.View style={animatedStyle} />
-          </Pressable>
+          />
         );
       })}
     </View>
