@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import Modal from 'react-native-modal';
-import { Picker } from '@react-native-picker/picker';
 import { MaterialIcons } from '@expo/vector-icons';
 
 export type CreateBubbleData = {
@@ -30,6 +29,7 @@ export default function CreateBubbleModal({ visible, onClose, onCreate }: Create
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
+  const [topicMenuVisible, setTopicMenuVisible] = useState(false);
 
   const canCreate = name.trim() !== '' && topic !== '';
 
@@ -56,17 +56,36 @@ export default function CreateBubbleModal({ visible, onClose, onCreate }: Create
           onChangeText={setName}
         />
         <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={topic}
-            onValueChange={setTopic}
-            dropdownIconColor="#fff"
-            style={styles.picker}
+          <TouchableOpacity
+            style={styles.dropdownButton}
+            onPress={() => setTopicMenuVisible(true)}
           >
-            <Picker.Item label="Select topic..." value="" />
-            {TOPICS.map((t) => (
-              <Picker.Item key={t} label={t} value={t} />
-            ))}
-          </Picker>
+            <Text style={[styles.dropdownText, !topic && { color: '#888' }]}> 
+              {topic || 'Select topic...'}
+            </Text>
+          </TouchableOpacity>
+          <Modal
+            isVisible={topicMenuVisible}
+            onBackdropPress={() => setTopicMenuVisible(false)}
+          >
+            <View style={styles.dropdownList}>
+              <FlatList
+                data={TOPICS}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setTopic(item);
+                      setTopicMenuVisible(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownItemText}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </Modal>
         </View>
         <TextInput
           placeholder="Description (optional)"
@@ -121,15 +140,30 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   pickerContainer: {
+    marginBottom: 12,
+  },
+  dropdownButton: {
     borderWidth: 1,
     borderColor: '#333',
-    borderRadius: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  picker: {
-    color: '#fff',
     backgroundColor: '#222',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownText: {
+    color: '#fff',
+  },
+  dropdownList: {
+    backgroundColor: '#222',
+    borderRadius: 8,
+    paddingVertical: 8,
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  dropdownItemText: {
+    color: '#fff',
   },
   description: {
     height: 80,
