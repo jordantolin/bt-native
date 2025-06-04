@@ -1,34 +1,29 @@
-import React, { useEffect, useState, useRef } from "react";
-import {
-  View,
-  StyleSheet,
-  Dimensions,
-  Pressable,
-  Text,
-  Animated,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../navigation/RootNavigator";
-import { useAuth } from "../context/AuthContext";
-import Bubble, { BubbleData } from "../components/Bubble";
-import CreateBubbleModal, { NewBubble } from "../components/CreateBubbleModal";
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Pressable, Text, Animated } from 'react-native';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 
-const { width, height } = Dimensions.get("window");
-const CENTER_X = width / 2;
-const CENTER_Y = height / 2;
+import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
+import CreateBubbleModal, { NewBubble } from '../components/CreateBubbleModal';
+import Bubble3D from '../components/Bubble3D';
+import type { BubbleData } from '../components/Bubble';
+
 const BASE_ORBIT = 60;
 const ORBIT_STEP = 50;
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Bubbles">;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Bubbles'>;
 
 export default function BubblesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { supabase } = useAuth();
+
   const [bubbles, setBubbles] = useState<BubbleData[]>([]);
   const [showModal, setShowModal] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState('');
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -44,19 +39,19 @@ export default function BubblesScreen() {
         duration: 300,
         useNativeDriver: true,
       }),
-    ]).start(() => setToast(""));
+    ]).start(() => setToast(''));
   };
 
   useEffect(() => {
     const loadBubbles = async () => {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
-        .from("bubbles")
-        .select("id, name, reflectionCount, created_at")
-        .gte("created_at", since)
-        .order("created_at", { ascending: true });
+        .from('bubbles')
+        .select('id, name, reflectionCount, created_at')
+        .gte('created_at', since)
+        .order('created_at', { ascending: true });
       if (error) {
-        console.error("Errore caricamento bolle:", error);
+        console.error('Errore caricamento bolle:', error);
         return;
       }
       const withOrbit = (data ?? []).map((item, idx) => ({
@@ -72,10 +67,10 @@ export default function BubblesScreen() {
     loadBubbles();
 
     const channel = supabase
-      .channel("bubbles")
+      .channel('bubbles')
       .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "bubbles" },
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bubbles' },
         (payload) => {
           const item: any = payload.new;
           const since = Date.now() - 24 * 60 * 60 * 1000;
@@ -89,7 +84,9 @@ export default function BubblesScreen() {
                 label: item.label ?? item.name ?? item.id,
                 reflectionCount: item.reflectionCount ?? 0,
                 orbitRadius:
-                  BASE_ORBIT + prev.length * ORBIT_STEP + Math.random() * ORBIT_STEP * 0.4,
+                  BASE_ORBIT +
+                  prev.length * ORBIT_STEP +
+                  Math.random() * ORBIT_STEP * 0.4,
               },
             ];
           });
@@ -104,15 +101,24 @@ export default function BubblesScreen() {
 
   return (
     <View style={styles.container}>
-      {bubbles.map((bubble) => (
-        <Bubble
-          key={bubble.id}
-          data={bubble}
-          centerX={CENTER_X}
-          centerY={CENTER_Y}
-          onPress={(id) => navigation.navigate("Chat", { bubbleId: id })}
-        />
-      ))}
+      <Canvas
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        camera={{ position: [0, 0, 200], fov: 60 }}
+        dpr={[1, 2]}
+      >
+        <color attach="background" args={["#111"]} />
+        <fog attach="fog" args={["#111", 100, 400]} />
+        <ambientLight intensity={0.4} />
+        <pointLight position={[0, 0, 0]} intensity={1} />
+        <OrbitControls makeDefault enablePan enableZoom enableRotate maxPolarAngle={Math.PI} minPolarAngle={0} />
+        {bubbles.map((bubble) => (
+          <Bubble3D
+            key={bubble.id}
+            data={bubble}
+            onPress={(id) => navigation.navigate('Chat', { bubbleId: id })}
+          />
+        ))}
+      </Canvas>
 
       <Pressable style={styles.addButton} onPress={() => setShowModal(true)}>
         <Text style={styles.addText}>+</Text>
@@ -135,7 +141,7 @@ export default function BubblesScreen() {
               },
             ];
           });
-          showToast("Bolla creata!");
+          showToast('Bolla creata!');
         }}
       />
 
@@ -166,36 +172,37 @@ export default function BubblesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111111",
+    backgroundColor: '#111',
   },
   addButton: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 40,
     right: 30,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#ffe46b",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#ffe46b',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addText: {
-    color: "#111",
+    color: '#111',
     fontSize: 32,
     lineHeight: 32,
   },
   toast: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 20,
     left: 0,
     right: 0,
-    alignItems: "center",
+    alignItems: 'center',
   },
   toastText: {
-    backgroundColor: "#333",
-    color: "#fff",
+    backgroundColor: '#333',
+    color: '#fff',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
 });
+
