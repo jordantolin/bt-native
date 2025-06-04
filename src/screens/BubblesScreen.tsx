@@ -5,6 +5,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../context/AuthContext';
 import Bubble, { BubbleData } from '../components/Bubble';
+import CreateBubbleModal from '../components/CreateBubbleModal';
+import { FAB } from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
 const CENTER_X = width / 2;
@@ -18,6 +20,8 @@ export default function BubblesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { supabase } = useAuth();
   const [bubbles, setBubbles] = useState<BubbleData[]>([]);
+  const [creating, setCreating] = useState(false);
+  const topics = ['General', 'Tech', 'Art', 'Sport'];
 
   useEffect(() => {
     const loadBubbles = async () => {
@@ -51,6 +55,12 @@ export default function BubblesScreen() {
           onPress={(id) => navigation.navigate('Chat', { bubbleId: id })}
         />
       ))}
+      <CreateBubbleModal
+        visible={creating}
+        onDismiss={() => setCreating(false)}
+        topics={topics}
+      />
+      <FAB icon="plus" style={styles.fab} onPress={() => setCreating(true)} />
     </View>
   );
 }
@@ -59,5 +69,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#111111',
+  },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
   },
 });
