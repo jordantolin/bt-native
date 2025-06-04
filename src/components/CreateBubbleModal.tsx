@@ -127,7 +127,8 @@ export default function CreateBubbleModal({ visible, onClose, onCreate }: Create
 
 const styles = StyleSheet.create({
   modal: {
-    margin: 0,
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
