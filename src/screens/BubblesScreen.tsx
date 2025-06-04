@@ -110,7 +110,7 @@ export default function BubblesScreen() {
         <fog attach="fog" args={["#111", 100, 400]} />
         <ambientLight intensity={0.4} />
         <pointLight position={[0, 0, 0]} intensity={1} />
-        <OrbitControls makeDefault enablePan enableZoom enableRotate maxPolarAngle={Math.PI} minPolarAngle={0} />
+        <OrbitControls makeDefault enablePan enableZoom enableRotate />
         {bubbles.map((bubble) => (
           <Bubble3D
             key={bubble.id}
