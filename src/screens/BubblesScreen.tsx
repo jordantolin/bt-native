@@ -51,14 +51,14 @@ export default function BubblesScreen() {
     const loadBubbles = async () => {
       const { data, error } = await supabase
         .from("bubbles")
-        .select("id, reflectionCount, label");
+        .select("id, reflectionCount, name");
       if (error) {
         console.error("Errore caricamento bolle:", error);
         return;
       }
       const withOrbit = (data ?? []).map((item, idx) => ({
         id: item.id as string,
-        label: (item as any).label ?? item.id,
+        label: (item as any).name ?? (item as any).label ?? item.id,
         reflectionCount: item.reflectionCount ?? 0,
         orbitRadius: BASE_ORBIT + idx * ORBIT_STEP,
       }));
