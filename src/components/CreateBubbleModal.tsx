@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TouchableWithoutFeedback } from "react-native";
+import { View, StyleSheet, TouchableWithoutFeedback, Text } from "react-native";
 import {
   Modal,
   Portal,
@@ -43,7 +43,7 @@ export default function CreateBubbleModal({
         description: desc,
         user_id: session?.user.id,
       })
-      .select("id, reflectionCount")
+      .select("id, reflectioncount")
       .single();
 
     if (error) {
@@ -55,7 +55,7 @@ export default function CreateBubbleModal({
       onCreated({
         id: data.id as string,
         name,
-        reflectionCount: data.reflectionCount ?? 0,
+        reflectionCount: (data as any).reflectioncount ?? 0,
       });
       setName("");
       setDesc("");
@@ -74,6 +74,11 @@ export default function CreateBubbleModal({
         <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
           <View>
             <IconButton icon="close" onPress={onClose} style={styles.close} />
+            <View style={{ alignItems: "center", marginBottom: 12 }}>
+              <IconButton icon="plus" iconColor="#ffe46b" size={20} />
+              <Text style={styles.title}>Create New Bubble</Text>
+              <Text style={styles.subtitle}>Share your thoughts</Text>
+            </View>
             <Menu
               visible={menuVisible}
               onDismiss={() => setMenuVisible(false)}
@@ -161,6 +166,19 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     padding: 4,
+  },
+  title: {
+    color: "#ffe46b",
+    fontSize: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  subtitle: {
+    color: "#ccc",
+    fontSize: 14,
+    marginTop: -4,
+    marginBottom: 8,
+    textAlign: "center",
   },
   dropdown: {
     width: "100%",
