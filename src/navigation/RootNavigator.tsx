@@ -10,12 +10,14 @@ import UsernameSetupScreen from '../screens/UsernameSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import BubblesScreen from '../screens/BubblesScreen';
 import ChatScreen from '../screens/ChatScreen';
+import TopBubblesScreen from '../screens/TopBubblesScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
   UsernameSetup: undefined;
   Home: undefined;
   Bubbles: undefined;
+  TopBubbles: undefined;
   Chat: { bubbleId: string };
 };
 
@@ -73,6 +75,7 @@ export default function RootNavigator() {
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Bubbles" component={BubblesScreen} />
+            <Stack.Screen name="TopBubbles" component={TopBubblesScreen} />
             <Stack.Screen name="Chat" component={ChatScreen} />
           </>
         );
