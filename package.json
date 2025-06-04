@@ -30,7 +30,8 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
-    "three": "^0.166.0"
+    "three": "^0.166.0",
+    "expo-three-orbit-controls": "^2.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
