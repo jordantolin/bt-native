@@ -1,99 +1,56 @@
-import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, View, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-} from 'react-native-reanimated';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { useAuth } from '../context/AuthContext';
+import Bubble, { BubbleData } from '../components/Bubble';
 
 const { width, height } = Dimensions.get('window');
 const CENTER_X = width / 2;
 const CENTER_Y = height / 2;
-
-type Bubble = {
-  id: string;
-  radius: number;
-  orbitRadius: number;
-  color: string;
-  angle: Animated.SharedValue<number>;
-  glow: Animated.SharedValue<number>;
-};
+const BASE_ORBIT = 60;
+const ORBIT_STEP = 50;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Bubbles'>;
 
-function useCreateBubble(index: number): Bubble {
-  const angle = useSharedValue(Math.random() * Math.PI * 2);
-  const glow = useSharedValue(0);
-
-  const duration = 10000 + Math.random() * 5000;
-
-  useEffect(() => {
-    angle.value = withRepeat(
-      withTiming(angle.value + Math.PI * 2, {
-        duration,
-      }),
-      -1,
-      false
-    );
-  }, []);
-
-  return {
-    id: `bubble-${index}`,
-    radius: 20 + Math.random() * 20,
-    orbitRadius: 60 + Math.random() * 100,
-    color: '#ffe46b',
-    angle,
-    glow,
-  };
-}
-
-function useBubbles(): Bubble[] {
-  return Array.from({ length: 8 }, (_, i) => useCreateBubble(i));
-}
-
 export default function BubblesScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const bubbles = useBubbles();
+  const { supabase } = useAuth();
+  const [bubbles, setBubbles] = useState<BubbleData[]>([]);
+
+  useEffect(() => {
+    const loadBubbles = async () => {
+      const { data, error } = await supabase
+        .from('bubbles')
+        .select('id, reflectionCount, label');
+      if (error) {
+        console.error('Errore caricamento bolle:', error);
+        return;
+      }
+      const withOrbit = (data ?? []).map((item, idx) => ({
+        id: item.id as string,
+        label: (item as any).label ?? item.id,
+        reflectionCount: item.reflectionCount ?? 0,
+        orbitRadius: BASE_ORBIT + idx * ORBIT_STEP,
+      }));
+      setBubbles(withOrbit);
+    };
+
+    loadBubbles();
+  }, []);
 
   return (
     <View style={styles.container}>
-      {bubbles.map((bubble) => {
-        const animatedStyle = useAnimatedStyle(() => {
-          const x = CENTER_X + bubble.orbitRadius * Math.cos(bubble.angle.value);
-          const y = CENTER_Y + bubble.orbitRadius * Math.sin(bubble.angle.value);
-          return {
-            transform: [{ translateX: x - bubble.radius }, { translateY: y - bubble.radius }],
-            width: bubble.radius * 2 + bubble.glow.value,
-            height: bubble.radius * 2 + bubble.glow.value,
-            borderRadius: bubble.radius + bubble.glow.value,
-            backgroundColor: bubble.color,
-            opacity: 0.9,
-            position: 'absolute',
-          };
-        });
-
-        return (
-          <Pressable
-            key={bubble.id}
-            onPress={() => {
-              bubble.glow.value = withSequence(
-                withTiming(12, { duration: 120 }),
-                withTiming(0, { duration: 200 })
-              );
-              setTimeout(() => {
-                navigation.navigate('Chat', { bubbleId: bubble.id });
-              }, 200);
-            }}
-          >
-            <Animated.View style={animatedStyle} />
-          </Pressable>
-        );
-      })}
+      {bubbles.map((bubble) => (
+        <Bubble
+          key={bubble.id}
+          data={bubble}
+          centerX={CENTER_X}
+          centerY={CENTER_Y}
+          onPress={(id) => navigation.navigate('Chat', { bubbleId: id })}
+        />
+      ))}
     </View>
   );
 }
