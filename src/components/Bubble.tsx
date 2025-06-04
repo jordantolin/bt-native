@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { Pressable } from 'react-native';
-import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+import React, { useEffect } from "react";
+import { Pressable } from "react-native";
+import Svg, { Circle, Text as SvgText } from "react-native-svg";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
   withSequence,
   useAnimatedProps,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedSvgText = Animated.createAnimatedComponent(SvgText);
@@ -27,7 +27,12 @@ export type BubbleProps = {
   onPress: (id: string) => void;
 };
 
-export default function Bubble({ data, centerX, centerY, onPress }: BubbleProps) {
+export default function Bubble({
+  data,
+  centerX,
+  centerY,
+  onPress,
+}: BubbleProps) {
   const angle = useSharedValue(Math.random() * Math.PI * 2);
   const glow = useSharedValue(0);
 
@@ -49,7 +54,7 @@ export default function Bubble({ data, centerX, centerY, onPress }: BubbleProps)
     const x = centerX + data.orbitRadius * Math.cos(angle.value) - r;
     const y = centerY + data.orbitRadius * Math.sin(angle.value) - r;
     return {
-      position: 'absolute',
+      position: "absolute",
       width: r * 2,
       height: r * 2,
       transform: [{ translateX: x }, { translateY: y }],

@@ -37,7 +37,7 @@ export default function ChatScreen() {
       console.error("Errore caricamento messaggi:", error);
       return;
     }
-    setMessages(data as Message[]);
+    setMessages((data ?? []) as unknown as Message[]);
   };
 
   useEffect(() => {
