@@ -1,99 +1,150 @@
-import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, View, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-} from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/RootNavigator';
+import React, { useEffect, useState, useRef } from "react";
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  Pressable,
+  Text,
+  Animated,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/RootNavigator";
+import { useAuth } from "../context/AuthContext";
+import Bubble, { BubbleData } from "../components/Bubble";
+import CreateBubbleModal, { NewBubble } from "../components/CreateBubbleModal";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 const CENTER_X = width / 2;
 const CENTER_Y = height / 2;
+const BASE_ORBIT = 60;
+const ORBIT_STEP = 50;
 
-type Bubble = {
-  id: string;
-  radius: number;
-  orbitRadius: number;
-  color: string;
-  angle: Animated.SharedValue<number>;
-  glow: Animated.SharedValue<number>;
-};
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Bubbles'>;
-
-function useCreateBubble(index: number): Bubble {
-  const angle = useSharedValue(Math.random() * Math.PI * 2);
-  const glow = useSharedValue(0);
-
-  const duration = 10000 + Math.random() * 5000;
-
-  useEffect(() => {
-    angle.value = withRepeat(
-      withTiming(angle.value + Math.PI * 2, {
-        duration,
-      }),
-      -1,
-      false
-    );
-  }, []);
-
-  return {
-    id: `bubble-${index}`,
-    radius: 20 + Math.random() * 20,
-    orbitRadius: 60 + Math.random() * 100,
-    color: '#ffe46b',
-    angle,
-    glow,
-  };
-}
-
-function useBubbles(): Bubble[] {
-  return Array.from({ length: 8 }, (_, i) => useCreateBubble(i));
-}
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Bubbles">;
 
 export default function BubblesScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const bubbles = useBubbles();
+  const { supabase } = useAuth();
+  const [bubbles, setBubbles] = useState<BubbleData[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const [toast, setToast] = useState("");
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    Animated.sequence([
+      Animated.timing(toastAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.delay(1500),
+      Animated.timing(toastAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setToast(""));
+  };
+
+  useEffect(() => {
+    const loadBubbles = async () => {
+      const { data, error } = await supabase
+        .from("bubbles")
+        .select("id, reflectionCount, label");
+      if (error) {
+        console.error("Errore caricamento bolle:", error);
+        return;
+      }
+      const withOrbit = (data ?? []).map((item, idx) => ({
+        id: item.id as string,
+        label: (item as any).label ?? item.id,
+        reflectionCount: item.reflectionCount ?? 0,
+        orbitRadius: BASE_ORBIT + idx * ORBIT_STEP,
+      }));
+      setBubbles(withOrbit);
+    };
+
+    loadBubbles();
+
+    const channel = supabase
+      .channel("bubbles")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "bubbles" },
+        (payload) => {
+          const item: any = payload.new;
+          setBubbles((prev) => [
+            ...prev,
+            {
+              id: item.id as string,
+              label: item.label ?? item.name ?? item.id,
+              reflectionCount: item.reflectionCount ?? 0,
+              orbitRadius: BASE_ORBIT + prev.length * ORBIT_STEP,
+            },
+          ]);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
-      {bubbles.map((bubble) => {
-        const animatedStyle = useAnimatedStyle(() => {
-          const x = CENTER_X + bubble.orbitRadius * Math.cos(bubble.angle.value);
-          const y = CENTER_Y + bubble.orbitRadius * Math.sin(bubble.angle.value);
-          return {
-            transform: [{ translateX: x - bubble.radius }, { translateY: y - bubble.radius }],
-            width: bubble.radius * 2 + bubble.glow.value,
-            height: bubble.radius * 2 + bubble.glow.value,
-            borderRadius: bubble.radius + bubble.glow.value,
-            backgroundColor: bubble.color,
-            opacity: 0.9,
-            position: 'absolute',
-          };
-        });
+      {bubbles.map((bubble) => (
+        <Bubble
+          key={bubble.id}
+          data={bubble}
+          centerX={CENTER_X}
+          centerY={CENTER_Y}
+          onPress={(id) => navigation.navigate("Chat", { bubbleId: id })}
+        />
+      ))}
 
-        return (
-          <Pressable
-            key={bubble.id}
-            onPress={() => {
-              bubble.glow.value = withSequence(
-                withTiming(12, { duration: 120 }),
-                withTiming(0, { duration: 200 })
-              );
-              setTimeout(() => {
-                navigation.navigate('Chat', { bubbleId: bubble.id });
-              }, 200);
-            }}
-          >
-            <Animated.View style={animatedStyle} />
-          </Pressable>
-        );
-      })}
+      <Pressable style={styles.addButton} onPress={() => setShowModal(true)}>
+        <Text style={styles.addText}>+</Text>
+      </Pressable>
+
+      <CreateBubbleModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        onCreated={(b: NewBubble) => {
+          setBubbles((prev) => [
+            ...prev,
+            {
+              id: b.id,
+              label: b.name,
+              reflectionCount: b.reflectionCount ?? 0,
+              orbitRadius: BASE_ORBIT + prev.length * ORBIT_STEP,
+            },
+          ]);
+          showToast("Bolla creata!");
+        }}
+      />
+
+      {toast ? (
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              opacity: toastAnim,
+              transform: [
+                {
+                  translateY: toastAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.toastText}>{toast}</Text>
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -101,6 +152,36 @@ export default function BubblesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111111',
+    backgroundColor: "#111111",
+  },
+  addButton: {
+    position: "absolute",
+    bottom: 40,
+    right: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#ffe46b",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addText: {
+    color: "#111",
+    fontSize: 32,
+    lineHeight: 32,
+  },
+  toast: {
+    position: "absolute",
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  toastText: {
+    backgroundColor: "#333",
+    color: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
 });
