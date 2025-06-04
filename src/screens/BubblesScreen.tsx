@@ -1,15 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Pressable, Text, Animated } from 'react-native';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { GLView, ExpoWebGLRenderingContext } from 'expo-gl';
+import { Renderer, THREE } from 'expo-three';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../context/AuthContext';
 import CreateBubbleModal, { NewBubble } from '../components/CreateBubbleModal';
-import Bubble3D from '../components/Bubble3D';
 import type { BubbleData } from '../components/Bubble';
+
+type OrbitBubble = {
+  data: BubbleData;
+  mesh: THREE.Mesh;
+  angle: number;
+  speed: number;
+};
 
 const BASE_ORBIT = 60;
 const ORBIT_STEP = 50;
@@ -24,6 +30,86 @@ export default function BubblesScreen() {
   const [showModal, setShowModal] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
   const [toast, setToast] = useState('');
+
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<Renderer | null>(null);
+  const orbitsRef = useRef<OrbitBubble[]>([]);
+  const frameRef = useRef<number | null>(null);
+
+  const createOrbitBubble = (data: BubbleData): OrbitBubble => {
+    const radius = 1 + Math.min(data.reflectionCount, 20) / 10;
+    const color = new THREE.Color(`hsl(48,100%,${80 - data.reflectionCount * 2}%)`);
+    const geometry = new THREE.SphereGeometry(radius, 32, 32);
+    const material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.scale.set(0.01, 0.01, 0.01);
+    return { data, mesh, angle: Math.random() * Math.PI * 2, speed: 0.2 + Math.random() * 0.1 };
+  };
+
+  const handleContextCreate = async (gl: ExpoWebGLRenderingContext) => {
+    const { drawingBufferWidth: width, drawingBufferHeight: height } = gl;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#111');
+    scene.fog = new THREE.Fog('#111', 100, 400);
+
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+    camera.position.z = 200;
+
+    const renderer = new Renderer({ gl });
+    renderer.setSize(width, height);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambient);
+    const light = new THREE.PointLight(0xffffff, 1);
+    scene.add(light);
+
+    sceneRef.current = scene;
+    cameraRef.current = camera;
+    rendererRef.current = renderer;
+
+    orbitsRef.current = bubbles.map((b) => {
+      const ob = createOrbitBubble(b);
+      scene.add(ob.mesh);
+      return ob;
+    });
+
+    const animate = () => {
+      frameRef.current = requestAnimationFrame(animate);
+      orbitsRef.current.forEach((o) => {
+        if (o.mesh.scale.x < 1) {
+          const s = Math.min(1, o.mesh.scale.x + 0.05);
+          o.mesh.scale.set(s, s, s);
+        }
+        o.angle += o.speed * 0.01;
+        const x = o.data.orbitRadius * Math.cos(o.angle);
+        const z = o.data.orbitRadius * Math.sin(o.angle);
+        const y = Math.sin(o.angle * 0.5) * 5;
+        o.mesh.position.set(x, y, z);
+      });
+      renderer.render(scene, camera);
+      gl.endFrameEXP();
+    };
+    animate();
+  };
+
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    const existing = new Set(orbitsRef.current.map((o) => o.data.id));
+    bubbles.forEach((b) => {
+      if (!existing.has(b.id)) {
+        const ob = createOrbitBubble(b);
+        sceneRef.current!.add(ob.mesh);
+        orbitsRef.current.push(ob);
+      }
+    });
+  }, [bubbles]);
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -101,24 +187,7 @@ export default function BubblesScreen() {
 
   return (
     <View style={styles.container}>
-      <Canvas
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        camera={{ position: [0, 0, 200], fov: 60 }}
-        dpr={[1, 2]}
-      >
-        <color attach="background" args={["#111"]} />
-        <fog attach="fog" args={["#111", 100, 400]} />
-        <ambientLight intensity={0.4} />
-        <pointLight position={[0, 0, 0]} intensity={1} />
-        <OrbitControls makeDefault enablePan enableZoom enableRotate maxPolarAngle={Math.PI} minPolarAngle={0} />
-        {bubbles.map((bubble) => (
-          <Bubble3D
-            key={bubble.id}
-            data={bubble}
-            onPress={(id) => navigation.navigate('Chat', { bubbleId: id })}
-          />
-        ))}
-      </Canvas>
+      <GLView style={StyleSheet.absoluteFill} onContextCreate={handleContextCreate} />
 
       <Pressable style={styles.addButton} onPress={() => setShowModal(true)}>
         <Text style={styles.addText}>+</Text>
