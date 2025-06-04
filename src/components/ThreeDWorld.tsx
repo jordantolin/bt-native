@@ -1,8 +1,8 @@
 // @ts-nocheck
 /// <reference types="@react-three/fiber" />
 import React from 'react';
-import { Canvas } from '@react-three/fiber/native';
-import { OrbitControls } from '@react-three/drei/native';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import Bubble, { BubbleProps } from './Bubble';
 
 export type ThreeDWorldProps = {

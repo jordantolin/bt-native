@@ -2,8 +2,8 @@
 /// <reference types="@react-three/fiber" />
 import React, { useRef } from 'react';
 import { Mesh } from 'three';
-import { useFrame } from '@react-three/fiber/native';
-import { Text } from '@react-three/drei/native';
+import { useFrame } from '@react-three/fiber';
+import { Text } from '@react-three/drei';
 import '@react-three/fiber';
 
 export type BubbleProps = {
