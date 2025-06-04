@@ -113,6 +113,9 @@ export default function CreateBubbleModal({
               value={name}
               onChangeText={setName}
               style={styles.input}
+              outlineColor="#555"
+              activeOutlineColor="#ffe46b"
+              theme={{ colors: { text: "#fff", placeholder: "#ffe46b" } }}
             />
             <TextInput
               mode="outlined"
@@ -121,6 +124,9 @@ export default function CreateBubbleModal({
               onChangeText={setDesc}
               multiline
               style={styles.input}
+              outlineColor="#555"
+              activeOutlineColor="#ffe46b"
+              theme={{ colors: { text: "#fff", placeholder: "#ffe46b" } }}
             />
             <Button
               mode="contained"
@@ -144,9 +150,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modal: {
-    width: "80%",
+    width: "90%",
     backgroundColor: "#222",
-    padding: 20,
+    padding: 24,
     borderRadius: 12,
     alignItems: "center",
   },
@@ -169,5 +175,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 8,
+    alignSelf: "center",
+    marginTop: 8,
   },
 });
