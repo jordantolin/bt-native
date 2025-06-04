@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import {
   Modal,
-  Portal,
+  View,
   Text,
+  StyleSheet,
   TextInput,
-  Button,
-  IconButton,
-  Menu,
-} from "react-native-paper";
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Pressable,
+} from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { useAuth } from "../context/AuthContext";
 
 export type NewBubble = {
@@ -40,139 +41,154 @@ export default function CreateBubbleModal({
 }: Props) {
   const { supabase, session } = useAuth();
   const [name, setName] = useState("");
-  const [topic, setTopic] = useState<string | null>(null);
+  const [topic, setTopic] = useState(TOPICS[0]);
   const [description, setDescription] = useState("");
-  const [menuVisible, setMenuVisible] = useState(false);
 
   const handleCreate = async () => {
-    if (!name.trim() || !topic) return;
+    if (!name.trim()) return;
     const { data, error } = await supabase
       .from("bubbles")
-      .insert({
-        name,
-        topic,
-        description,
-        user_id: session?.user.id,
-      })
-      .select("id")
+      .insert({ name, topic, description, user_id: session?.user.id })
+      .select("id, reflectionCount")
       .single();
     if (error) {
       console.error("Errore creazione bolla:", error);
       return;
     }
     if (data) {
-      onCreated({ id: data.id as string, name });
+      onCreated({
+        id: data.id as string,
+        name,
+        reflectionCount: (data as any).reflectionCount ?? 0,
+      });
       setName("");
-      setTopic(null);
+      setTopic(TOPICS[0]);
       setDescription("");
       onClose();
     }
   };
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onClose}
-        contentContainerStyle={styles.modal}
-      >
-        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
-          <View>
-            <IconButton icon="close" onPress={onClose} style={styles.close} />
-            <Text style={styles.title}>+ Create New Bubble</Text>
-            <Text style={styles.subtitle}>
-              Create a new bubble that will last for 24 hours. Invite others to
-              join your conversation!
-            </Text>
-            <TextInput
-              mode="outlined"
-              placeholder="Enter bubble name"
-              value={name}
-              onChangeText={setName}
-              style={styles.input}
-            />
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchor={
-                <TextInput
-                  mode="outlined"
-                  placeholder="Select a topic"
-                  value={topic ?? ""}
-                  onFocus={() => setMenuVisible(true)}
-                  style={styles.input}
-                  right={<TextInput.Icon icon="menu-down" />}
-                />
-              }
-            >
-              {TOPICS.map((t) => (
-                <Menu.Item
-                  key={t}
-                  onPress={() => {
-                    setTopic(t);
-                    setMenuVisible(false);
-                  }}
-                  title={t}
-                />
-              ))}
-            </Menu>
-            <TextInput
-              mode="outlined"
-              placeholder="What would you like to discuss in this bubble?"
-              multiline
-              value={description}
-              onChangeText={setDescription}
-              style={[styles.input, styles.desc]}
-            />
-            <Button
-              mode="contained"
-              style={styles.button}
-              textColor="#111"
-              onPress={handleCreate}
-            >
-              Create Bubble
-            </Button>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </Portal>
+    <Modal visible={visible} transparent animationType="fade">
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.backdrop}>
+          <TouchableWithoutFeedback>
+            <View style={styles.modal}>
+              <Pressable style={styles.closeButton} onPress={onClose}>
+                <Text style={styles.closeText}>×</Text>
+              </Pressable>
+              <Text style={styles.title}>+ Create New Bubble</Text>
+              <Text style={styles.subtitle}>
+                Create a new bubble that will last for 24 hours. Invite others
+                to join your conversation!
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter bubble name"
+                placeholderTextColor="#888"
+                value={name}
+                onChangeText={setName}
+              />
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={topic}
+                  onValueChange={(val) => setTopic(val)}
+                  dropdownIconColor="#ffe46b"
+                  style={styles.picker}
+                >
+                  {TOPICS.map((t) => (
+                    <Picker.Item label={t} value={t} key={t} />
+                  ))}
+                </Picker>
+              </View>
+              <TextInput
+                style={[styles.input, styles.desc]}
+                placeholder="What would you like to discuss in this bubble?"
+                placeholderTextColor="#888"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+              />
+              <TouchableOpacity style={styles.button} onPress={handleCreate}>
+                <Text style={styles.buttonText}>Create Bubble</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modal: {
-    margin: 20,
-    backgroundColor: "#121212",
-    padding: 24,
-    borderRadius: 12,
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
   },
-  close: {
+  modal: {
+    width: "100%",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 12,
+    padding: 20,
+  },
+  closeButton: {
     position: "absolute",
     top: 8,
     right: 8,
+    zIndex: 10,
+  },
+  closeText: {
+    fontSize: 22,
+    color: "#ccc",
   },
   title: {
     color: "#ffe46b",
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
-    marginTop: 16,
+    marginBottom: 8,
   },
   subtitle: {
     color: "#ccc",
-    fontSize: 14,
     textAlign: "center",
-    marginVertical: 8,
+    marginBottom: 16,
   },
   input: {
+    width: "100%",
+    backgroundColor: "#222",
+    color: "#f5f5f5",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     marginBottom: 12,
   },
   desc: {
-    minHeight: 80,
+    height: 80,
+    textAlignVertical: "top",
+  },
+  pickerWrapper: {
+    backgroundColor: "#222",
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  picker: {
+    color: "#f5f5f5",
+    height: 40,
+    width: "100%",
   },
   button: {
     backgroundColor: "#ffe46b",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
     alignSelf: "center",
-    marginTop: 8,
+    marginTop: 4,
+  },
+  buttonText: {
+    color: "#111",
+    fontWeight: "bold",
   },
 });

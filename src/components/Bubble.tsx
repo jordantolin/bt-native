@@ -36,9 +36,9 @@ export default function Bubble({
   const angle = useSharedValue(Math.random() * Math.PI * 2);
   const glow = useSharedValue(0);
 
-  const radius = 20 + data.reflectionCount * 3;
-  const colorHue = 240 - data.reflectionCount * 20;
-  const color = `hsl(${colorHue < 0 ? 0 : colorHue}, 70%, 60%)`;
+  const intensity = Math.min(1, data.reflectionCount / 10);
+  const radius = 15 + Math.min(data.reflectionCount * 2, 35);
+  const color = `rgba(255, 228, 107, ${0.3 + intensity * 0.7})`;
 
   useEffect(() => {
     const duration = 10000 + Math.random() * 5000;

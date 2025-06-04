@@ -49,7 +49,9 @@ export default function BubblesScreen() {
 
   useEffect(() => {
     const loadBubbles = async () => {
-      const { data, error } = await supabase.from("bubbles").select("id, name");
+      const { data, error } = await supabase
+        .from("bubbles")
+        .select("id, name, reflectionCount");
       if (error) {
         console.error("Errore caricamento bolle:", error);
         return;
@@ -57,7 +59,7 @@ export default function BubblesScreen() {
       const withOrbit = (data ?? []).map((item, idx) => ({
         id: item.id as string,
         label: (item as any).name ?? (item as any).label ?? item.id,
-        reflectionCount: 0,
+        reflectionCount: (item as any).reflectionCount ?? 0,
         orbitRadius: BASE_ORBIT + idx * ORBIT_STEP,
       }));
       setBubbles(withOrbit);
@@ -77,7 +79,7 @@ export default function BubblesScreen() {
             {
               id: item.id as string,
               label: item.label ?? item.name ?? item.id,
-              reflectionCount: 0,
+              reflectionCount: item.reflectionCount ?? 0,
               orbitRadius: BASE_ORBIT + prev.length * ORBIT_STEP,
             },
           ]);
