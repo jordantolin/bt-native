@@ -1,194 +1,192 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
-  Modal,
   View,
   Text,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  Pressable,
-} from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import { useAuth } from "../context/AuthContext";
+  StyleSheet,
+  Platform,
+  Modal as RNModal,
+} from 'react-native';
+import Modal from 'react-native-modal';
+import { Picker } from '@react-native-picker/picker';
 
-export type NewBubble = {
-  id: string;
-  name: string;
-  reflectionCount?: number;
-};
-
-const TOPICS = [
-  "Filosofia",
-  "Spiritualità",
-  "Tecnologia",
-  "Arte",
-  "Musica",
-  "Scienza",
-  "Altro",
-];
-
-type Props = {
+interface Props {
   visible: boolean;
   onClose: () => void;
-  onCreated: (bubble: NewBubble) => void;
-};
+  onCreate?: (name: string, topic: string, description: string) => void;
+}
 
-export default function CreateBubbleModal({
-  visible,
-  onClose,
-  onCreated,
-}: Props) {
-  const { supabase, session } = useAuth();
-  const [name, setName] = useState("");
-  const [topic, setTopic] = useState(TOPICS[0]);
-  const [description, setDescription] = useState("");
+export default function CreateBubbleModal({ visible, onClose, onCreate }: Props) {
+  const [name, setName] = useState('');
+  const [topic, setTopic] = useState('');
+  const [description, setDescription] = useState('');
+  const [isPickerVisible, setPickerVisible] = useState(false);
 
-  const handleCreate = async () => {
-    if (!name.trim()) return;
-    const { data, error } = await supabase
-      .from("bubbles")
-      .insert({ name, topic, description, user_id: session?.user.id })
-      .select("id, reflectionCount")
-      .single();
-    if (error) {
-      console.error("Errore creazione bolla:", error);
-      return;
-    }
-    if (data) {
-      onCreated({
-        id: data.id as string,
-        name,
-        reflectionCount: (data as any).reflectionCount ?? 0,
-      });
-      setName("");
-      setTopic(TOPICS[0]);
-      setDescription("");
-      onClose();
-    }
+  const handleSubmit = () => {
+    if (!name.trim() || !topic.trim()) return;
+    onCreate?.(name, topic, description); // safe call
+    setName('');
+    setTopic('');
+    setDescription('');
+    onClose();
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop}>
-          <TouchableWithoutFeedback>
-            <View style={styles.modal}>
-              <Pressable style={styles.closeButton} onPress={onClose}>
-                <Text style={styles.closeText}>×</Text>
-              </Pressable>
-              <Text style={styles.title}>+ Create New Bubble</Text>
-              <Text style={styles.subtitle}>
-                Create a new bubble that will last for 24 hours. Invite others
-                to join your conversation!
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter bubble name"
-                placeholderTextColor="#888"
-                value={name}
-                onChangeText={setName}
-              />
-              <View style={styles.pickerWrapper}>
-                <Picker
-                  selectedValue={topic}
-                  onValueChange={(val) => setTopic(val)}
-                  dropdownIconColor="#ffe46b"
-                  style={styles.picker}
-                >
-                  {TOPICS.map((t) => (
-                    <Picker.Item label={t} value={t} key={t} />
-                  ))}
-                </Picker>
-              </View>
-              <TextInput
-                style={[styles.input, styles.desc]}
-                placeholder="What would you like to discuss in this bubble?"
-                placeholderTextColor="#888"
-                value={description}
-                onChangeText={setDescription}
-                multiline
-              />
-              <TouchableOpacity style={styles.button} onPress={handleCreate}>
-                <Text style={styles.buttonText}>Create Bubble</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableWithoutFeedback>
+    <Modal isVisible={visible} onBackdropPress={onClose} backdropOpacity={0.6}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>+ Create New Bubble</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={styles.close}>✕</Text>
+          </TouchableOpacity>
         </View>
-      </TouchableWithoutFeedback>
+
+        <Text style={styles.subtitle}>
+          Create a new bubble that will last for 24 hours. Invite others to join your conversation!
+        </Text>
+
+        {/* Name */}
+        <Text style={styles.label}>Name</Text>
+        <TextInput
+          placeholder="Enter bubble name"
+          placeholderTextColor="#888"
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+        />
+
+        {/* Topic */}
+        <Text style={styles.label}>Topic</Text>
+        <TouchableOpacity
+          style={styles.fakeDropdown}
+          onPress={() => setPickerVisible(true)}
+        >
+          <Text style={styles.dropdownText}>
+            {topic || 'Select a topic'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Description */}
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          placeholder="What would you like to discuss in this bubble? (optional)"
+          placeholderTextColor="#888"
+          style={[styles.input, styles.description]}
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
+
+        {/* Submit */}
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Create Bubble</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Picker in Native Modal */}
+      <RNModal visible={isPickerVisible} transparent animationType="slide">
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={topic}
+              onValueChange={(value) => {
+                setTopic(value);
+                setPickerVisible(false);
+              }}
+              style={{ color: '#fff', backgroundColor: '#222' }}
+            >
+              <Picker.Item label="Select a topic" value="" />
+              <Picker.Item label="Filosofia" value="Filosofia" />
+              <Picker.Item label="Spiritualità" value="Spiritualità" />
+              <Picker.Item label="Tecnologia" value="Tecnologia" />
+              <Picker.Item label="Arte" value="Arte" />
+              <Picker.Item label="Musica" value="Musica" />
+              <Picker.Item label="Altro" value="Altro" />
+            </Picker>
+          </View>
+        </View>
+      </RNModal>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 16,
+  container: {
+    backgroundColor: '#111',
+    padding: 22,
+    borderRadius: 20,
   },
-  modal: {
-    width: "100%",
-    backgroundColor: "#1a1a1a",
-    borderRadius: 12,
-    padding: 20,
-  },
-  closeButton: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    zIndex: 10,
-  },
-  closeText: {
-    fontSize: 22,
-    color: "#ccc",
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
-    color: "#ffe46b",
     fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 8,
+    color: '#ffe46b',
+    fontWeight: 'bold',
+  },
+  close: {
+    fontSize: 20,
+    color: '#ccc',
   },
   subtitle: {
-    color: "#ccc",
-    textAlign: "center",
-    marginBottom: 16,
+    color: '#ccc',
+    marginTop: 8,
+    fontSize: 14,
+  },
+  label: {
+    marginTop: 16,
+    marginBottom: 4,
+    color: '#fff',
+    fontWeight: '600',
   },
   input: {
-    width: "100%",
-    backgroundColor: "#222",
-    color: "#f5f5f5",
+    backgroundColor: '#222',
+    color: '#fff',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderColor: '#333',
+    borderWidth: 1,
   },
-  desc: {
+  description: {
     height: 80,
-    textAlignVertical: "top",
+    textAlignVertical: 'top',
   },
-  pickerWrapper: {
-    backgroundColor: "#222",
-    borderRadius: 8,
-    marginBottom: 12,
+  fakeDropdown: {
+    backgroundColor: '#222',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderColor: '#333',
+    borderWidth: 1,
   },
-  picker: {
-    color: "#f5f5f5",
-    height: 40,
-    width: "100%",
+  dropdownText: {
+    color: '#fff',
   },
   button: {
-    backgroundColor: "#ffe46b",
+    backgroundColor: '#ffe46b',
+    borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignSelf: "center",
-    marginTop: 4,
+    marginTop: 24,
+    alignItems: 'center',
   },
   buttonText: {
-    color: "#111",
-    fontWeight: "bold",
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pickerContainer: {
+    backgroundColor: '#222',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 0,
   },
 });
