@@ -1,13 +1,13 @@
 import React, { useState } from "react";
+import { View, StyleSheet, TouchableWithoutFeedback } from "react-native";
 import {
   Modal,
-  View,
-  Text,
+  Portal,
   TextInput,
-  Pressable,
-  StyleSheet,
-  TouchableWithoutFeedback,
-} from "react-native";
+  Button,
+  Menu,
+  IconButton,
+} from "react-native-paper";
 import { useAuth } from "../context/AuthContext";
 
 export type NewBubble = {
@@ -29,12 +29,20 @@ export default function CreateBubbleModal({
 }: Props) {
   const { supabase, session } = useAuth();
   const [name, setName] = useState("");
+  const [topic, setTopic] = useState("Filosofia");
+  const [desc, setDesc] = useState("");
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     const { data, error } = await supabase
       .from("bubbles")
-      .insert({ name, user_id: session?.user.id })
+      .insert({
+        name,
+        topic,
+        description: desc,
+        user_id: session?.user.id,
+      })
       .select("id, reflectionCount")
       .single();
 
@@ -50,39 +58,81 @@ export default function CreateBubbleModal({
         reflectionCount: data.reflectionCount ?? 0,
       });
       setName("");
+      setDesc("");
+      setTopic("Filosofia");
       onClose();
     }
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop}>
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <View style={styles.modal}>
-              <Pressable style={styles.close} onPress={onClose}>
-                <Text style={styles.closeText}>✕</Text>
-              </Pressable>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Nome bolla"
-                placeholderTextColor="#888"
-              />
-              <Pressable style={styles.button} onPress={handleCreate}>
-                <Text style={styles.buttonText}>Crea</Text>
-              </Pressable>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
+    <Portal>
+      <Modal
+        visible={visible}
+        onDismiss={onClose}
+        contentContainerStyle={styles.modal}
+      >
+        <TouchableWithoutFeedback onPress={() => setMenuVisible(false)}>
+          <View>
+            <IconButton icon="close" onPress={onClose} style={styles.close} />
+            <Menu
+              visible={menuVisible}
+              onDismiss={() => setMenuVisible(false)}
+              anchor={
+                <Button
+                  mode="outlined"
+                  onPress={() => setMenuVisible(true)}
+                  style={styles.dropdown}
+                  textColor="#ffe46b"
+                >
+                  {topic}
+                </Button>
+              }
+            >
+              {[
+                "Filosofia",
+                "Spiritualità",
+                "Tecnologia",
+                "Arte",
+                "Musica",
+                "Scienza",
+                "Altro",
+              ].map((t) => (
+                <Menu.Item
+                  key={t}
+                  onPress={() => {
+                    setTopic(t);
+                    setMenuVisible(false);
+                  }}
+                  title={t}
+                />
+              ))}
+            </Menu>
+            <TextInput
+              mode="outlined"
+              label="Nome bolla"
+              value={name}
+              onChangeText={setName}
+              style={styles.input}
+            />
+            <TextInput
+              mode="outlined"
+              label="Descrizione"
+              value={desc}
+              onChangeText={setDesc}
+              multiline
+              style={styles.input}
+            />
+            <Button
+              mode="contained"
+              onPress={handleCreate}
+              style={styles.button}
+            >
+              Create Bubble
+            </Button>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </Portal>
   );
 }
 
@@ -106,17 +156,12 @@ const styles = StyleSheet.create({
     right: 8,
     padding: 4,
   },
-  closeText: {
-    color: "#fff",
-    fontSize: 18,
+  dropdown: {
+    width: "100%",
+    marginBottom: 16,
   },
   input: {
     width: "100%",
-    backgroundColor: "#111",
-    color: "#fff",
-    borderRadius: 8,
-    padding: 10,
-    textAlign: "center",
     marginBottom: 16,
   },
   button: {
@@ -124,9 +169,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 8,
-  },
-  buttonText: {
-    color: "#111",
-    fontWeight: "bold",
   },
 });
