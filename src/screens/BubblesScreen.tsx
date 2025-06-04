@@ -11,6 +11,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import BubbleComponent from '../components/Bubble';
+import FloatingButtons from '../components/FloatingButtons';
+import CreateBubbleModal from '../components/CreateBubbleModal';
 
 const { width, height } = Dimensions.get('window');
 const CENTER_X = width / 2;
@@ -84,6 +86,7 @@ function useBubbles(): Bubble[] {
 export default function BubblesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const bubbles = useBubbles();
+  const [modalVisible, setModalVisible] = useState(false);
   const [, setTick] = useState(0);
 
   // trigger rerenders to check expiration
@@ -192,6 +195,15 @@ export default function BubblesScreen() {
           />
         );
       })}
+      <CreateBubbleModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onCreate={() => setModalVisible(false)}
+      />
+      <FloatingButtons
+        onLeftPress={() => navigation.navigate('TopBubbles')}
+        onRightPress={() => setModalVisible(true)}
+      />
     </View>
   );
 }
