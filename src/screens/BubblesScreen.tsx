@@ -15,6 +15,7 @@ type OrbitBubble = {
   mesh: THREE.Mesh;
   angle: number;
   speed: number;
+  labelPos: Animated.ValueXY;
 };
 
 const BASE_ORBIT = 60;
@@ -36,6 +37,8 @@ export default function BubblesScreen() {
   const rendererRef = useRef<Renderer | null>(null);
   const orbitsRef = useRef<OrbitBubble[]>([]);
   const frameRef = useRef<number | null>(null);
+  const sizeRef = useRef({ width: 0, height: 0 });
+  const [, setTick] = useState(0);
 
   const createOrbitBubble = (data: BubbleData): OrbitBubble => {
     const radius = 1 + Math.min(data.reflectionCount, 20) / 10;
@@ -44,11 +47,19 @@ export default function BubblesScreen() {
     const material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.scale.set(0.01, 0.01, 0.01);
-    return { data, mesh, angle: Math.random() * Math.PI * 2, speed: 0.2 + Math.random() * 0.1 };
+    const labelPos = new Animated.ValueXY({ x: 0, y: 0 });
+    return {
+      data,
+      mesh,
+      angle: Math.random() * Math.PI * 2,
+      speed: 0.2 + Math.random() * 0.1,
+      labelPos,
+    };
   };
 
   const handleContextCreate = async (gl: ExpoWebGLRenderingContext) => {
     const { drawingBufferWidth: width, drawingBufferHeight: height } = gl;
+    sizeRef.current = { width, height };
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#111');
     scene.fog = new THREE.Fog('#111', 100, 400);
@@ -73,7 +84,9 @@ export default function BubblesScreen() {
       scene.add(ob.mesh);
       return ob;
     });
+    setTick((t) => t + 1);
 
+    const vec = new THREE.Vector3();
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
       orbitsRef.current.forEach((o) => {
@@ -86,6 +99,12 @@ export default function BubblesScreen() {
         const z = o.data.orbitRadius * Math.sin(o.angle);
         const y = Math.sin(o.angle * 0.5) * 5;
         o.mesh.position.set(x, y, z);
+
+        o.mesh.getWorldPosition(vec);
+        vec.project(camera);
+        const sx = (vec.x + 1) / 2 * sizeRef.current.width;
+        const sy = (-vec.y + 1) / 2 * sizeRef.current.height;
+        o.labelPos.setValue({ x: sx, y: sy });
       });
       renderer.render(scene, camera);
       gl.endFrameEXP();
@@ -101,6 +120,7 @@ export default function BubblesScreen() {
         const ob = createOrbitBubble(b);
         sceneRef.current!.add(ob.mesh);
         orbitsRef.current.push(ob);
+        setTick((t) => t + 1);
       }
     });
   }, [bubbles]);
@@ -187,7 +207,35 @@ export default function BubblesScreen() {
 
   return (
     <View style={styles.container}>
-      <GLView style={StyleSheet.absoluteFill} onContextCreate={handleContextCreate} />
+      <GLView
+        style={StyleSheet.absoluteFill}
+        onContextCreate={handleContextCreate}
+        onLayout={(e) => {
+          sizeRef.current = {
+            width: e.nativeEvent.layout.width,
+            height: e.nativeEvent.layout.height,
+          };
+        }}
+      />
+
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {orbitsRef.current.map((o) => (
+          <Animated.Text
+            key={o.data.id}
+            style={[
+              styles.label,
+              {
+                transform: [
+                  { translateX: o.labelPos.x },
+                  { translateY: o.labelPos.y },
+                ],
+              },
+            ]}
+          >
+            {o.data.label}
+          </Animated.Text>
+        ))}
+      </View>
 
       <Pressable style={styles.addButton} onPress={() => setShowModal(true)}>
         <Text style={styles.addText}>+</Text>
@@ -272,6 +320,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  label: {
+    position: 'absolute',
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
